@@ -8,6 +8,7 @@ class RoomList {
         this.rooms = [];
         this.currentRoomId = null;
         this.roomListContainer = document.getElementById('room-list');
+        this.onRoomSelect = null;
         this.init();
     }
     
@@ -87,6 +88,15 @@ class RoomList {
     }
     
     selectRoom(roomId) {
+        this.setActiveRoom(roomId);
+        
+        // Notify parent component about room selection
+        if (this.onRoomSelect) {
+            this.onRoomSelect(roomId);
+        }
+    }
+    
+    setActiveRoom(roomId) {
         // Remove active class from all rooms
         this.roomListContainer.querySelectorAll('.room-item').forEach(item => {
             item.classList.remove('active');
@@ -99,11 +109,6 @@ class RoomList {
         }
         
         this.currentRoomId = roomId;
-        
-        // Join the room
-        if (window.ripcordApp) {
-            window.ripcordApp.joinRoom(roomId);
-        }
     }
     
     addRoom(room) {

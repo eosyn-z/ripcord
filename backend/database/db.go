@@ -2,58 +2,30 @@ package database
 
 import (
 	"database/sql"
+	"fmt"
 	"time"
 	"crypto/ed25519"
 	"encoding/hex"
 	"errors"
 	_ "github.com/mattn/go-sqlite3"
+	"ripcord/types"
 )
 
 type Database interface {
 	Connect() error
 	Disconnect() error
-	SaveMessage(msg *Message) error
-	GetMessages(roomID string, limit int) ([]*Message, error)
-	SaveRoom(room *Room) error
-	GetRoom(roomID string) (*Room, error)
-	GetRooms() ([]*Room, error)
-	SaveUser(user *User) error
-	GetUser(userID string) (*User, error)
+	SaveMessage(msg *types.Message) error
+	GetMessages(roomID string, limit int) ([]*types.Message, error)
+	SaveRoom(room *types.Room) error
+	GetRoom(roomID string) (*types.Room, error)
+	GetRooms() ([]*types.Room, error)
+	SaveUser(user *types.User) error
+	GetUser(userID string) (*types.User, error)
 	AddRoomParticipant(roomID, userID string) error
 	RemoveRoomParticipant(roomID, userID string) error
 	GetRoomParticipants(roomID string) ([]string, error)
 	SaveSettings(key, value string) error
 	GetSettings(key string) (string, error)
-}
-
-type Message struct {
-	ID        string    `db:"id"`
-	RoomID    string    `db:"room_id"`
-	UserID    string    `db:"user_id"`
-	Username  string    `db:"username"`
-	Content   string    `db:"content"`
-	Type      string    `db:"type"`
-	Encrypted bool      `db:"encrypted"`
-	Timestamp time.Time `db:"timestamp"`
-	Signature string    `db:"signature"`
-}
-
-type Room struct {
-	ID          string    `db:"id"`
-	Name        string    `db:"name"`
-	Description string    `db:"description"`
-	InviteCode  string    `db:"invite_code"`
-	IsPrivate   bool      `db:"is_private"`
-	CreatedAt   time.Time `db:"created_at"`
-}
-
-type User struct {
-	ID        string    `db:"id"`
-	Username  string    `db:"username"`
-	PublicKey string    `db:"public_key"`
-	CreatedAt time.Time `db:"created_at"`
-	LastSeen  time.Time `db:"last_seen"`
-	IsBlocked bool      `db:"is_blocked"`
 }
 
 type SQLiteDatabase struct {
@@ -128,6 +100,24 @@ func (sdb *SQLiteDatabase) createTables() error {
 		}
 	}
 	
+	// Create indexes for better performance
+	indexQueries := []string{
+		`CREATE INDEX IF NOT EXISTS idx_messages_room_id ON messages(room_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON messages(timestamp)`,
+		`CREATE INDEX IF NOT EXISTS idx_messages_user_id ON messages(user_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_rooms_created_at ON rooms(created_at)`,
+		`CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)`,
+		`CREATE INDEX IF NOT EXISTS idx_users_public_key ON users(public_key)`,
+		`CREATE INDEX IF NOT EXISTS idx_room_participants_room_id ON room_participants(room_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_room_participants_user_id ON room_participants(user_id)`,
+	}
+	
+	for _, query := range indexQueries {
+		if _, err := sdb.db.Exec(query); err != nil {
+			return err
+		}
+	}
+	
 	return nil
 }
 
@@ -138,40 +128,63 @@ func (sdb *SQLiteDatabase) Disconnect() error {
 	return nil
 }
 
-func (sdb *SQLiteDatabase) SaveMessage(msg *Message) error {
+func (sdb *SQLiteDatabase) SaveMessage(msg *types.Message) error {
+	if msg == nil {
+		return errors.New("message is nil")
+	}
+	
+	if msg.ID == "" || msg.RoomID == "" || msg.UserID == "" {
+		return errors.New("message missing required fields")
+	}
+	
 	query := `INSERT OR REPLACE INTO messages (id, room_id, user_id, username, content, type, encrypted, timestamp, signature)
 			  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
 	
 	_, err := sdb.db.Exec(query, msg.ID, msg.RoomID, msg.UserID, msg.Username, 
 		msg.Content, msg.Type, msg.Encrypted, msg.Timestamp, msg.Signature)
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to save message: %v", err)
+	}
+	return nil
 }
 
-func (sdb *SQLiteDatabase) GetMessages(roomID string, limit int) ([]*Message, error) {
+func (sdb *SQLiteDatabase) GetMessages(roomID string, limit int) ([]*types.Message, error) {
+	if roomID == "" {
+		return nil, errors.New("room ID is required")
+	}
+	
+	if limit <= 0 {
+		limit = 50 // Default limit
+	}
+	
 	query := `SELECT id, room_id, user_id, username, content, type, encrypted, timestamp, signature
 			  FROM messages WHERE room_id = ? ORDER BY timestamp DESC LIMIT ?`
 	
 	rows, err := sdb.db.Query(query, roomID, limit)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to query messages: %v", err)
 	}
 	defer rows.Close()
 	
-	var messages []*Message
+	var messages []*types.Message
 	for rows.Next() {
-		msg := &Message{}
+		msg := &types.Message{}
 		err := rows.Scan(&msg.ID, &msg.RoomID, &msg.UserID, &msg.Username,
 			&msg.Content, &msg.Type, &msg.Encrypted, &msg.Timestamp, &msg.Signature)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to scan message: %v", err)
 		}
 		messages = append(messages, msg)
+	}
+	
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating messages: %v", err)
 	}
 	
 	return messages, nil
 }
 
-func (sdb *SQLiteDatabase) SaveRoom(room *Room) error {
+func (sdb *SQLiteDatabase) SaveRoom(room *types.Room) error {
 	query := `INSERT OR REPLACE INTO rooms (id, name, description, invite_code, is_private, created_at)
 			  VALUES (?, ?, ?, ?, ?, ?)`
 	
@@ -180,11 +193,11 @@ func (sdb *SQLiteDatabase) SaveRoom(room *Room) error {
 	return err
 }
 
-func (sdb *SQLiteDatabase) GetRoom(roomID string) (*Room, error) {
+func (sdb *SQLiteDatabase) GetRoom(roomID string) (*types.Room, error) {
 	query := `SELECT id, name, description, invite_code, is_private, created_at
 			  FROM rooms WHERE id = ?`
 	
-	room := &Room{}
+	room := &types.Room{}
 	err := sdb.db.QueryRow(query, roomID).Scan(&room.ID, &room.Name, 
 		&room.Description, &room.InviteCode, &room.IsPrivate, &room.CreatedAt)
 	
@@ -195,7 +208,7 @@ func (sdb *SQLiteDatabase) GetRoom(roomID string) (*Room, error) {
 	return room, err
 }
 
-func (sdb *SQLiteDatabase) GetRooms() ([]*Room, error) {
+func (sdb *SQLiteDatabase) GetRooms() ([]*types.Room, error) {
 	query := `SELECT id, name, description, invite_code, is_private, created_at
 			  FROM rooms ORDER BY created_at DESC`
 	
@@ -205,9 +218,9 @@ func (sdb *SQLiteDatabase) GetRooms() ([]*Room, error) {
 	}
 	defer rows.Close()
 	
-	var rooms []*Room
+	var rooms []*types.Room
 	for rows.Next() {
-		room := &Room{}
+		room := &types.Room{}
 		err := rows.Scan(&room.ID, &room.Name, &room.Description, 
 			&room.InviteCode, &room.IsPrivate, &room.CreatedAt)
 		if err != nil {
@@ -219,7 +232,7 @@ func (sdb *SQLiteDatabase) GetRooms() ([]*Room, error) {
 	return rooms, nil
 }
 
-func (sdb *SQLiteDatabase) SaveUser(user *User) error {
+func (sdb *SQLiteDatabase) SaveUser(user *types.User) error {
 	query := `INSERT OR REPLACE INTO users (id, username, public_key, created_at, last_seen, is_blocked)
 			  VALUES (?, ?, ?, ?, ?, ?)`
 	
@@ -228,11 +241,11 @@ func (sdb *SQLiteDatabase) SaveUser(user *User) error {
 	return err
 }
 
-func (sdb *SQLiteDatabase) GetUser(userID string) (*User, error) {
+func (sdb *SQLiteDatabase) GetUser(userID string) (*types.User, error) {
 	query := `SELECT id, username, public_key, created_at, last_seen, is_blocked
 			  FROM users WHERE id = ?`
 	
-	user := &User{}
+	user := &types.User{}
 	err := sdb.db.QueryRow(query, userID).Scan(&user.ID, &user.Username,
 		&user.PublicKey, &user.CreatedAt, &user.LastSeen, &user.IsBlocked)
 	

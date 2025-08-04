@@ -11,32 +11,8 @@ import (
 	"time"
 	"github.com/google/uuid"
 	"ripcord/security"
+	"ripcord/types"
 )
-
-type Message struct {
-	ID        string    `json:"id"`
-	RoomID    string    `json:"room_id"`
-	UserID    string    `json:"user_id"`
-	Username  string    `json:"username"`
-	Content   string    `json:"content"`
-	Type      string    `json:"type"`
-	Encrypted bool      `json:"encrypted"`
-	Timestamp time.Time `json:"timestamp"`
-	Signature string    `json:"signature,omitempty"`
-}
-
-const (
-	MessageTypeText    = "text"
-	MessageTypeCommand = "command"
-	MessageTypeSystem  = "system"
-	MessageTypeDM      = "dm"
-	MessageTypeFile    = "file"
-)
-
-type SlashCommand struct {
-	Command string
-	Args    []string
-}
 
 type MessageHandler struct {
 	cryptoManager *security.CryptoManager
@@ -48,18 +24,18 @@ func NewMessageHandler(cryptoManager *security.CryptoManager) *MessageHandler {
 	}
 }
 
-func NewMessage(roomID, userID, username, content, msgType string) *Message {
+func NewMessage(roomID, userID, username, content, msgType string) *types.Message {
 	msgID := generateMessageID()
 	
 	if msgType == "" {
 		if strings.HasPrefix(content, "/") {
-			msgType = MessageTypeCommand
+			msgType = types.MessageTypeCommand
 		} else {
-			msgType = MessageTypeText
+			msgType = types.MessageTypeText
 		}
 	}
 	
-	return &Message{
+	return &types.Message{
 		ID:        msgID,
 		RoomID:    roomID,
 		UserID:    userID,
@@ -75,7 +51,7 @@ func generateMessageID() string {
 	return uuid.New().String()
 }
 
-func (mh *MessageHandler) CreateSignedMessage(roomID, userID, username, content, msgType string) (*Message, error) {
+func (mh *MessageHandler) CreateSignedMessage(roomID, userID, username, content, msgType string) (*types.Message, error) {
 	msg := NewMessage(roomID, userID, username, content, msgType)
 	
 	privateKey := mh.cryptoManager.GetPrivateKey()
@@ -86,7 +62,7 @@ func (mh *MessageHandler) CreateSignedMessage(roomID, userID, username, content,
 	return msg, nil
 }
 
-func (m *Message) Sign(privateKey ed25519.PrivateKey) error {
+func (m *types.Message) Sign(privateKey ed25519.PrivateKey) error {
 	if privateKey == nil {
 		return errors.New("private key is nil")
 	}
@@ -101,13 +77,13 @@ func (m *Message) Sign(privateKey ed25519.PrivateKey) error {
 	return nil
 }
 
-func (m *Message) getSignableData() ([]byte, error) {
+func (m *types.Message) getSignableData() ([]byte, error) {
 	temp := *m
 	temp.Signature = ""
 	return json.Marshal(temp)
 }
 
-func (m *Message) VerifySignature(publicKey ed25519.PublicKey) bool {
+func (m *types.Message) VerifySignature(publicKey ed25519.PublicKey) bool {
 	if m.Signature == "" || publicKey == nil {
 		return false
 	}
@@ -125,11 +101,11 @@ func (m *Message) VerifySignature(publicKey ed25519.PublicKey) bool {
 	return ed25519.Verify(publicKey, signableData, signature)
 }
 
-func (m *Message) IsSlashCommand() bool {
+func (m *types.Message) IsSlashCommand() bool {
 	return strings.HasPrefix(m.Content, "/")
 }
 
-func (m *Message) ParseSlashCommand() (*SlashCommand, error) {
+func (m *types.Message) ParseSlashCommand() (*types.SlashCommand, error) {
 	if !m.IsSlashCommand() {
 		return nil, errors.New("not a slash command")
 	}
@@ -142,13 +118,13 @@ func (m *Message) ParseSlashCommand() (*SlashCommand, error) {
 	command := strings.TrimPrefix(parts[0], "/")
 	args := parts[1:]
 	
-	return &SlashCommand{
+	return &types.SlashCommand{
 		Command: command,
 		Args:    args,
 	}, nil
 }
 
-func (mh *MessageHandler) ProcessSlashCommand(msg *Message) (*ProtocolMessage, error) {
+func (mh *MessageHandler) ProcessSlashCommand(msg *types.Message) (*types.ProtocolMessage, error) {
 	cmd, err := msg.ParseSlashCommand()
 	if err != nil {
 		return nil, err
@@ -172,13 +148,13 @@ func (mh *MessageHandler) ProcessSlashCommand(msg *Message) (*ProtocolMessage, e
 	}
 }
 
-func (mh *MessageHandler) handleJoinCommand(msg *Message, args []string) (*ProtocolMessage, error) {
+func (mh *MessageHandler) handleJoinCommand(msg *types.Message, args []string) (*types.ProtocolMessage, error) {
 	if len(args) < 1 {
 		return nil, errors.New("join command requires invite code")
 	}
 	
 	inviteCode := args[0]
-	protocolMsg := NewProtocolMessage(MessageTypeJoin, msg.UserID, generateMessageID())
+	protocolMsg := NewProtocolMessage(types.ProtocolMessageTypeJoin, msg.UserID, generateMessageID())
 	protocolMsg.SetPayload(JoinPayload{
 		InviteCode: inviteCode,
 		Nickname:   msg.Username,
@@ -188,13 +164,13 @@ func (mh *MessageHandler) handleJoinCommand(msg *Message, args []string) (*Proto
 	return protocolMsg, nil
 }
 
-func (mh *MessageHandler) handleLeaveCommand(msg *Message, args []string) (*ProtocolMessage, error) {
+func (mh *MessageHandler) handleLeaveCommand(msg *types.Message, args []string) (*types.ProtocolMessage, error) {
 	reason := ""
 	if len(args) > 0 {
 		reason = strings.Join(args, " ")
 	}
 	
-	protocolMsg := NewProtocolMessage(MessageTypeLeave, msg.UserID, generateMessageID())
+	protocolMsg := NewProtocolMessage(types.ProtocolMessageTypeLeave, msg.UserID, generateMessageID())
 	protocolMsg.RoomID = msg.RoomID
 	protocolMsg.SetPayload(LeavePayload{
 		RoomID: msg.RoomID,
@@ -204,26 +180,26 @@ func (mh *MessageHandler) handleLeaveCommand(msg *Message, args []string) (*Prot
 	return protocolMsg, nil
 }
 
-func (mh *MessageHandler) handleInviteCommand(msg *Message, args []string) (*ProtocolMessage, error) {
+func (mh *MessageHandler) handleInviteCommand(msg *types.Message, args []string) (*types.ProtocolMessage, error) {
 	if len(args) < 1 {
 		return nil, errors.New("invite command requires username")
 	}
 	
 	username := args[0]
-	protocolMsg := NewProtocolMessage(MessageTypeInvite, msg.UserID, generateMessageID())
+	protocolMsg := NewProtocolMessage(types.ProtocolMessageTypeInvite, msg.UserID, generateMessageID())
 	protocolMsg.To = username
 	protocolMsg.RoomID = msg.RoomID
 	
 	return protocolMsg, nil
 }
 
-func (mh *MessageHandler) handleBlockCommand(msg *Message, args []string) (*ProtocolMessage, error) {
+func (mh *MessageHandler) handleBlockCommand(msg *types.Message, args []string) (*types.ProtocolMessage, error) {
 	if len(args) < 1 {
 		return nil, errors.New("block command requires username")
 	}
 	
 	username := args[0]
-	protocolMsg := NewProtocolMessage(MessageTypeBlock, msg.UserID, generateMessageID())
+	protocolMsg := NewProtocolMessage(types.ProtocolMessageTypeBlock, msg.UserID, generateMessageID())
 	protocolMsg.SetPayload(UserInfoPayload{
 		Nickname:  username,
 		IsBlocked: true,
@@ -232,13 +208,13 @@ func (mh *MessageHandler) handleBlockCommand(msg *Message, args []string) (*Prot
 	return protocolMsg, nil
 }
 
-func (mh *MessageHandler) handleUnblockCommand(msg *Message, args []string) (*ProtocolMessage, error) {
+func (mh *MessageHandler) handleUnblockCommand(msg *types.Message, args []string) (*types.ProtocolMessage, error) {
 	if len(args) < 1 {
 		return nil, errors.New("unblock command requires username")
 	}
 	
 	username := args[0]
-	protocolMsg := NewProtocolMessage(MessageTypeBlock, msg.UserID, generateMessageID())
+	protocolMsg := NewProtocolMessage(types.ProtocolMessageTypeUnblock, msg.UserID, generateMessageID())
 	protocolMsg.SetPayload(UserInfoPayload{
 		Nickname:  username,
 		IsBlocked: false,
@@ -247,7 +223,7 @@ func (mh *MessageHandler) handleUnblockCommand(msg *Message, args []string) (*Pr
 	return protocolMsg, nil
 }
 
-func (mh *MessageHandler) handleDMCommand(msg *Message, args []string) (*ProtocolMessage, error) {
+func (mh *MessageHandler) handleDMCommand(msg *types.Message, args []string) (*types.ProtocolMessage, error) {
 	if len(args) < 2 {
 		return nil, errors.New("dm command requires username and message")
 	}
@@ -255,7 +231,7 @@ func (mh *MessageHandler) handleDMCommand(msg *Message, args []string) (*Protoco
 	username := args[0]
 	content := strings.Join(args[1:], " ")
 	
-	protocolMsg := NewProtocolMessage(MessageTypeDM, msg.UserID, generateMessageID())
+	protocolMsg := NewProtocolMessage(types.ProtocolMessageTypeDM, msg.UserID, generateMessageID())
 	protocolMsg.To = username
 	protocolMsg.SetPayload(DMPayload{
 		Content:     content,
@@ -265,6 +241,6 @@ func (mh *MessageHandler) handleDMCommand(msg *Message, args []string) (*Protoco
 	return protocolMsg, nil
 }
 
-func (m *Message) ToJSON() ([]byte, error) {
+func (m *types.Message) ToJSON() ([]byte, error) {
 	return json.Marshal(m)
 } 

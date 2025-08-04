@@ -125,13 +125,11 @@ class InputBar {
             return;
         }
         
-        // Clear the input
-        this.clearInput();
-        
         // Send the message through the main app
         if (window.ripcordApp) {
             window.ripcordApp.sendMessage();
         }
+        // Note: Input will be cleared by the main app after successful sending
     }
     
     clearInput() {

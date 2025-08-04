@@ -19,6 +19,7 @@ type Room struct {
 	IsPrivate   bool               `json:"is_private"`
 	Members     map[string]*Member `json:"members"`
 	Moderators  map[string]bool    `json:"moderators"`
+	Messages    []*Message         `json:"messages,omitempty"` // For testing compatibility
 	CreatedAt   time.Time          `json:"created_at"`
 	mu          sync.RWMutex       `json:"-"`
 }
@@ -34,7 +35,7 @@ type Member struct {
 
 type RoomManager struct {
 	rooms   map[string]*Room
-	db      Database
+	db      database.Database
 	mu      sync.RWMutex
 }
 
@@ -44,7 +45,7 @@ const (
 	RoleAdmin     = "admin"
 )
 
-func NewRoomManager(db Database) *RoomManager {
+func NewRoomManager(db database.Database) *RoomManager {
 	return &RoomManager{
 		rooms: make(map[string]*Room),
 		db:    db,
@@ -63,6 +64,7 @@ func NewRoom(name, description string, isPrivate bool, creatorID string) *Room {
 		IsPrivate:   isPrivate,
 		Members:     make(map[string]*Member),
 		Moderators:  make(map[string]bool),
+		Messages:    make([]*Message, 0),
 		CreatedAt:   time.Now(),
 	}
 	
@@ -139,6 +141,7 @@ func (rm *RoomManager) GetRoom(roomID string) (*Room, error) {
 		IsPrivate:   dbRoom.IsPrivate,
 		Members:     make(map[string]*Member),
 		Moderators:  make(map[string]bool),
+		Messages:    make([]*Message, 0),
 		CreatedAt:   dbRoom.CreatedAt,
 	}
 	
@@ -351,4 +354,17 @@ func (rm *RoomManager) LeaveRoom(roomID, userID string) error {
 	}
 	
 	return rm.db.RemoveRoomParticipant(roomID, userID)
+}
+
+// AddMessage adds a message to the room's in-memory message list (for testing compatibility)
+func (r *Room) AddMessage(msg *Message) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	
+	if r.Messages == nil {
+		r.Messages = make([]*Message, 0)
+	}
+	
+	r.Messages = append(r.Messages, msg)
+	return nil
 } 

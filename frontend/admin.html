@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ripcord Node Administration</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="admin-styles.css">
+    <link rel="icon" href="assets/images/favicon.ico" type="image/x-icon">
+</head>
+<body class="admin-body">
+    <div id="admin-app">
+        <header class="admin-header">
+            <div class="header-content">
+                <h1 class="admin-title">Ripcord Node Administration</h1>
+                <div class="node-status">
+                    <span class="status-indicator" id="node-status-indicator"></span>
+                    <span class="status-text" id="node-status-text">Node Status</span>
+                </div>
+            </div>
+        </header>
+        
+        <nav class="admin-nav">
+            <button class="nav-btn active" data-section="overview">Node Overview</button>
+            <button class="nav-btn" data-section="rooms">Room Management</button>
+            <button class="nav-btn" data-section="peers">Peer Management</button>
+            <button class="nav-btn" data-section="settings">Node Settings</button>
+        </nav>
+        
+        <main class="admin-main">
+            <!-- Node Overview Section -->
+            <section id="overview-section" class="admin-section active">
+                <h2>Node Overview</h2>
+                
+                <div class="info-cards">
+                    <div class="info-card">
+                        <h3>Node Identity</h3>
+                        <div class="info-item">
+                            <label>Public Key:</label>
+                            <div class="key-display">
+                                <span id="node-public-key">Loading...</span>
+                                <button class="btn-copy" onclick="copyToClipboard('node-public-key')">Copy</button>
+                            </div>
+                        </div>
+                        <div class="info-item">
+                            <label>Key Fingerprint:</label>
+                            <span id="node-fingerprint">Loading...</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Nickname:</label>
+                            <span id="node-nickname">Loading...</span>
+                        </div>
+                    </div>
+                    
+                    <div class="info-card">
+                        <h3>I2P Connection</h3>
+                        <div class="info-item">
+                            <label>I2P Address:</label>
+                            <div class="address-display">
+                                <span id="i2p-address">Not Available</span>
+                                <button class="btn-copy" onclick="copyToClipboard('i2p-address')">Copy</button>
+                            </div>
+                        </div>
+                        <div class="info-item">
+                            <label>Connection Status:</label>
+                            <span id="i2p-status" class="status-badge">Checking...</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Active Peers:</label>
+                            <span id="active-peers-count">0</span>
+                        </div>
+                    </div>
+                    
+                    <div class="info-card">
+                        <h3>Server Statistics</h3>
+                        <div class="info-item">
+                            <label>Uptime:</label>
+                            <span id="server-uptime">-</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Active Rooms:</label>
+                            <span id="active-rooms-count">0</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Total Messages:</label>
+                            <span id="total-messages-count">0</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="actions">
+                    <button id="refresh-status" class="btn btn-primary">Refresh Status</button>
+                    <button id="restart-node" class="btn btn-warning">Restart Node</button>
+                </div>
+            </section>
+            
+            <!-- Room Management Section -->
+            <section id="rooms-section" class="admin-section">
+                <h2>Room Management</h2>
+                
+                <div class="section-actions">
+                    <button id="create-admin-room" class="btn btn-primary">Create Room</button>
+                    <button id="refresh-rooms" class="btn btn-secondary">Refresh</button>
+                </div>
+                
+                <div id="admin-rooms-list" class="admin-rooms-list">
+                    <!-- Rooms will be populated here -->
+                </div>
+            </section>
+            
+            <!-- Peer Management Section -->
+            <section id="peers-section" class="admin-section">
+                <h2>Peer Management</h2>
+                
+                <div class="section-actions">
+                    <button id="refresh-peers" class="btn btn-secondary">Refresh</button>
+                    <button id="clear-blocked-peers" class="btn btn-warning">Clear Blocked</button>
+                </div>
+                
+                <div id="peers-list" class="peers-list">
+                    <!-- Peers will be populated here -->
+                </div>
+                
+                <div class="peer-logs">
+                    <h3>Connection Logs</h3>
+                    <div id="connection-logs" class="logs-container">
+                        <!-- Logs will be populated here -->
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Node Settings Section -->
+            <section id="settings-section" class="admin-section">
+                <h2>Node Settings</h2>
+                
+                <div class="settings-container">
+                    <div class="settings-group">
+                        <h3>I2P Configuration</h3>
+                        <div class="form-group">
+                            <label for="i2p-host">I2P Host:</label>
+                            <input type="text" id="i2p-host" placeholder="127.0.0.1">
+                        </div>
+                        <div class="form-group">
+                            <label for="i2p-port">I2P Port:</label>
+                            <input type="number" id="i2p-port" placeholder="7656">
+                        </div>
+                        <div class="form-group">
+                            <label for="tunnel-length">Tunnel Length:</label>
+                            <select id="tunnel-length">
+                                <option value="1">1 (Fast)</option>
+                                <option value="2" selected>2 (Balanced)</option>
+                                <option value="3">3 (Secure)</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="settings-group">
+                        <h3>Server Configuration</h3>
+                        <div class="form-group">
+                            <label for="server-port">Server Port:</label>
+                            <input type="number" id="server-port" placeholder="8080">
+                        </div>
+                        <div class="form-group">
+                            <label for="max-peers">Max Peers:</label>
+                            <input type="number" id="max-peers" placeholder="50">
+                        </div>
+                        <div class="form-group">
+                            <label for="message-retention">Message Retention (days):</label>
+                            <input type="number" id="message-retention" placeholder="30">
+                        </div>
+                    </div>
+                    
+                    <div class="settings-group">
+                        <h3>Security Settings</h3>
+                        <div class="form-group">
+                            <div class="checkbox-group">
+                                <input type="checkbox" id="auto-block-malicious">
+                                <label for="auto-block-malicious">Auto-block malicious peers</label>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <div class="checkbox-group">
+                                <input type="checkbox" id="require-signature-verification">
+                                <label for="require-signature-verification">Require signature verification</label>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="rate-limit">Rate limit (messages/minute):</label>
+                            <input type="number" id="rate-limit" placeholder="60">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="settings-actions">
+                    <button id="save-settings" class="btn btn-primary">Save Settings</button>
+                    <button id="reset-settings" class="btn btn-secondary">Reset to Defaults</button>
+                    <button id="reload-config" class="btn btn-warning">Reload Configuration</button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Room Details Modal -->
+    <div id="room-details-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3>Room Details</h3>
+            <div id="room-details-content">
+                <!-- Room details will be populated here -->
+            </div>
+            <div class="modal-actions">
+                <button id="close-room-details" class="btn btn-secondary">Close</button>
+                <button id="delete-room" class="btn btn-danger">Delete Room</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Room Modal -->
+    <div id="create-admin-room-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3>Create New Room</h3>
+            <form id="create-admin-room-form">
+                <div class="form-group">
+                    <label for="admin-room-name">Room Name:</label>
+                    <input type="text" id="admin-room-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="admin-room-description">Description:</label>
+                    <textarea id="admin-room-description" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="admin-room-private">
+                        <label for="admin-room-private">Private Room</label>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" id="cancel-create-admin-room" class="btn btn-secondary">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Room</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="admin.js"></script>
+</body>
+</html>

@@ -9,7 +9,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 	"github.com/mr-tron/base58"
@@ -67,7 +67,7 @@ func (cm *CryptoManager) loadKeys() error {
 		return errors.New("key file does not exist")
 	}
 	
-	data, err := ioutil.ReadFile(cm.keyPath)
+	data, err := os.ReadFile(cm.keyPath)
 	if err != nil {
 		return err
 	}
@@ -84,7 +84,7 @@ func (cm *CryptoManager) loadKeys() error {
 	}
 	
 	privateKeyPath := cm.keyPath + ".private"
-	privateKeyData, err := ioutil.ReadFile(privateKeyPath)
+	privateKeyData, err := os.ReadFile(privateKeyPath)
 	if err != nil {
 		return err
 	}
@@ -117,13 +117,13 @@ func (cm *CryptoManager) saveKeys() error {
 		return err
 	}
 	
-	if err := ioutil.WriteFile(cm.keyPath, data, 0644); err != nil {
+	if err := os.WriteFile(cm.keyPath, data, 0644); err != nil {
 		return err
 	}
 	
 	privateKeyPath := cm.keyPath + ".private"
 	privateKeyHex := hex.EncodeToString(cm.keyPair.PrivateKey)
-	return ioutil.WriteFile(privateKeyPath, []byte(privateKeyHex), 0600)
+	return os.WriteFile(privateKeyPath, []byte(privateKeyHex), 0600)
 }
 
 func (cm *CryptoManager) SignMessage(message []byte) []byte {

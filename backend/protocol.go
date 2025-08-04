@@ -23,6 +23,7 @@ const (
 	MessageTypeRoomInfo  = "room_info"
 	MessageTypeUserInfo  = "user_info"
 	MessageTypeBlock     = "block"
+	MessageTypeUnblock   = "unblock"
 )
 
 type ProtocolMessage struct {

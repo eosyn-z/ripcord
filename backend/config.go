@@ -50,11 +50,8 @@ type SecurityConfig struct {
 // TODO: Implement secure configuration storage
 
 func LoadConfig(filename string) (*Config, error) {
-	// TODO: Load configuration from file
-	// TODO: Validate configuration
-	// TODO: Set defaults for missing values
-	
-	return &Config{
+	// Default configuration
+	config := &Config{
 		Server: ServerConfig{
 			Host: "localhost",
 			Port: 8080,
@@ -71,12 +68,38 @@ func LoadConfig(filename string) (*Config, error) {
 		Security: SecurityConfig{
 			EncryptionEnabled: true,
 			KeySize:          256,
-			Algorithm:        "AES-256-GCM",
+			Algorithm:        "Ed25519",
 		},
-	}, nil
+	}
+	
+	// Check if config file exists
+	if _, err := os.Stat(filename); os.IsNotExist(err) {
+		// Create default config file
+		if err := config.Save(filename); err != nil {
+			return config, err
+		}
+		return config, nil
+	}
+	
+	// Load config from file
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		return config, err
+	}
+	
+	// Parse JSON
+	if err := json.Unmarshal(data, config); err != nil {
+		return config, err
+	}
+	
+	return config, nil
 }
 
 func (c *Config) Save(filename string) error {
-	// TODO: Save configuration to file
-	return nil
+	data, err := json.MarshalIndent(c, "", "  ")
+	if err != nil {
+		return err
+	}
+	
+	return os.WriteFile(filename, data, 0644)
 } 
