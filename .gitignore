@@ -71,4 +71,10 @@ i2p/
 
 # Configuration files with sensitive data
 config.json
-config.local.json 
+config.local.json
+
+# Development and documentation files
+FOR_CLAUDE/
+tests/
+FIXES_LOG.md
+.claude/ 
