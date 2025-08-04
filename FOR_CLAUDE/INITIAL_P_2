@@ -1,0 +1,42 @@
+# Specialized Prompt for Cursor: Beginning the Base Content Generation
+
+You are tasked with starting the content for the following files in the project scaffolding for a decentralized secure chat platform. This content should lay the foundation for further development, including basic imports, setup, and placeholder functions or data structures:
+
+1. **Backend (Go)**:
+   - `backend/main.go`:
+     - Import necessary packages (e.g., `net/http`, `fmt`, `crypto/ed25519`, `database/sql`).
+     - Initialize the server and I2P communication.
+     - Create a basic server that listens for incoming connections.
+   - `backend/node.go`:
+     - Define the basic node struct with public/private keys and I2P address.
+     - Add placeholder methods for node initialization and peer communication.
+   - `backend/room.go`:
+     - Define the Room struct with name, UUID, and participant list.
+     - Add a placeholder for adding/removing users.
+   - `backend/message.go`:
+     - Define the Message struct with fields for content, author, timestamp, and room UUID.
+   - `backend/protocol.go`:
+     - Define a placeholder for handling the custom JSON message protocol.
+   - `backend/config.go`:
+     - Set up basic config management (e.g., reading I2P settings).
+
+2. **Frontend (HTML/CSS/JS)**:
+   - `frontend/index.html`:
+     - Basic HTML boilerplate (DOCTYPE, head with meta tags, body with containers).
+   - `frontend/app.js`:
+     - Set up React (if applicable) or basic JavaScript to wire up frontend components.
+     - Define global state and communication logic with backend (via WebSockets, HTTP, or TCP).
+   - `frontend/styles.css`:
+     - Define basic layout, colors (beige, red-orange), and typography.
+   - `frontend/components/ChatPane.js`:
+     - Basic structure of the chat pane (messages list, input bar, etc.).
+   - `frontend/components/RoomList.js`:
+     - Placeholder component for displaying room list.
+   - `frontend/components/InputBar.js`:
+     - Placeholder for the input bar and message submission.
+   - `frontend/components/UserList.js`:
+     - Placeholder for displaying connected users in a room.
+   - `frontend/components/SettingsPanel.js`:
+     - Placeholder for user settings panel (theme, blocklist).
+
+Please create basic code snippets and placeholders to initialize the files with minimal content that will be built upon later.

@@ -1,0 +1,189 @@
+# 🛠️ Project Tracker: Decentralized Secure Chat Platform (Inspired by Discord)
+
+## 🧾 Simplified Context for Claude:
+
+You are tracking the development of a decentralized, peer-to-peer chat application inspired by Discord. Each user hosts their own node with a public/private Ed25519 keypair and connects to other peers through the I2P anonymity network using TCP tunnels. Nodes exchange JSON-based messages using a lightweight custom protocol. Communication occurs in "rooms" with unique base58 invite codes. All data, including messages and settings, is stored locally in SQLite with CRDT-based syncing. The frontend is a minimalist, beige-themed UI in HTML/CSS/JS served by a local Go backend. Slash commands, DMs, blocklists, and identity verification via key fingerprints are supported. The project is fully cross-platform and installable locally. There is no centralized infrastructure. Security, anonymity, and resilience to regulatory interference (e.g., EU Chat Control) are top priorities.
+
+---
+
+## ✅ MVP Development Roadmap
+
+### 📁 0. Project Planning & Architecture
+- [ ] Define MVP feature scope
+- [ ] Finalize tech stack: Go, SQLite, I2P, HTML/JS/CSS
+- [ ] Design communication protocol using JSON (versioned)
+- [ ] Define schemas: `Room`, `Message`, `User`, `Heartbeat`, `Invite`
+
+---
+
+### ⚙️ 1. Backend (Go)
+
+#### 1.1 Key & Identity Management
+- [ ] Generate Ed25519 keypair on first run
+- [ ] Store keypair securely (encrypted file or SQLite)
+- [ ] Derive public key and associate nickname
+- [ ] Export/import keys and settings
+
+#### 1.2 Node Initialization
+- [ ] Create onboarding wizard (key + nickname)
+- [ ] Check I2P daemon availability
+- [ ] Start TCP server tunneled over I2P
+- [ ] Assign node I2P b32 address
+
+#### 1.3 Room Infrastructure
+- [ ] Create/join rooms with 16-char base58 invite codes
+- [ ] Support public/private room flags
+- [ ] Maintain list of participants
+- [ ] Log and persist message history in SQLite
+- [ ] Moderator roles and blocklist logic
+
+#### 1.4 Message System
+- [ ] Implement signed message format with:
+  - Message ID
+  - Author pubkey
+  - Room UUID
+  - Timestamp
+  - Signed payload
+- [ ] Handle slash commands: `/join`, `/invite`, `/block`
+- [ ] Encrypted DMs between users
+- [ ] CRDT syncing for message consistency
+- [ ] Offline caching and conflict resolution
+
+#### 1.5 Peer Communication
+- [ ] Establish TCP connections over I2P
+- [ ] Handle incoming/outgoing JSON packets
+- [ ] Broadcast heartbeat packets with encrypted identity info
+- [ ] Peer connection retry/resume logic
+
+#### 1.6 Trust & Security
+- [ ] Signature verification for all packets
+- [ ] Manual or automatic fingerprint trust model
+- [ ] Block and rate-limit malicious nodes
+- [ ] Ignore unsigned or malformed messages
+
+---
+
+### 🌐 2. I2P Integration
+
+- [ ] Interface with I2P daemon (external or embedded)
+- [ ] Start inbound TCP tunnel for node communication
+- [ ] Connect to peers via b32 address
+- [ ] Reconnect logic and health check monitoring
+- [ ] Expose I2P status indicators to frontend
+
+---
+
+### 💻 3. Frontend (HTML/CSS/JS)
+
+#### 3.1 UI Layout
+- [ ] Flat UI with beige and red-orange theme
+- [ ] Sections:
+  - Room list (scrollable)
+  - Chat pane
+  - Input bar
+  - User list
+  - Settings panel
+  - Invite prompt
+
+#### 3.2 Core Features
+- [ ] Live message feed
+- [ ] Join room via invite
+- [ ] Slash command entry
+- [ ] Connection and sync status indicators
+- [ ] DM interface
+
+#### 3.3 User Identity Panel
+- [ ] Show nickname and public key fingerprint
+- [ ] Copy/share public identity
+- [ ] Show blocked/muted users
+
+#### 3.4 Settings & Moderation UI
+- [ ] Toggle themes and preferences
+- [ ] Blocklist management
+- [ ] Per-room moderator panel
+
+#### 3.5 Frontend–Backend Bridge
+- [ ] Connect via WebSocket/local TCP
+- [ ] Update frontend based on backend events
+- [ ] Serve static frontend files via Go
+
+---
+
+### 🗃️ 4. Local Database (SQLite)
+
+- [ ] Create schema for:
+  - Rooms
+  - Messages
+  - Peers
+  - Settings
+- [ ] Persist local settings and message cache
+- [ ] Implement CRDT-style diff tracking
+- [ ] Restore state on app restart
+
+---
+
+### 🧪 5. Testing & QA
+
+#### 5.1 Unit & Integration Tests
+- [ ] Test key management and signing logic
+- [ ] Simulate peer message flow
+- [ ] Test CRDT merge logic with conflict scenarios
+
+#### 5.2 Network & Peer Simulation
+- [ ] Launch multiple nodes locally
+- [ ] Test connection stability over I2P
+- [ ] Verify heartbeat, reconnect, and sync behaviors
+
+#### 5.3 Security Review
+- [ ] Signature verification audit
+- [ ] Packet injection and malformed data tests
+- [ ] Check for key leakage or logging risks
+
+---
+
+### 📦 6. Packaging & Cross-Platform Support
+
+- [ ] CLI flags and config files
+- [ ] Windows EXE with installer
+- [ ] macOS `.app` or `.dmg` package
+- [ ] Linux `.AppImage` or `.deb`
+- [ ] Shell script for CLI installs
+- [ ] Optional bundled I2P wrapper or systemd service
+
+---
+
+### 📚 7. Documentation
+
+#### 7.1 Developer Docs
+- [ ] Architecture diagrams and design notes
+- [ ] JSON protocol and schema documentation
+- [ ] Extension points for frontend/backend
+- [ ] CRDT and syncing logic explanation
+
+#### 7.2 User Docs
+- [ ] Quickstart guide
+- [ ] Joining/creating rooms
+- [ ] Sending encrypted DMs
+- [ ] Managing blocklists and settings
+
+---
+
+## 🚀 Optional Enhancements (Post-MVP)
+
+- [ ] Mobile-friendly web UI
+- [ ] Rich message types (reactions, uploads)
+- [ ] Emoji and markdown support
+- [ ] Room pinning and starring
+- [ ] PGP key support or hardware wallets
+- [ ] Push notifications (self-hosted)
+
+---
+
+## 📌 Current Phase:  
+> _(Fill this in during project tracking. e.g., "Working on Backend Peer Communication & I2P Integration")_
+
+---
+
+## ✏️ Notes & Logs
+
+> _(Claude or the team can track decisions, blockers, or key updates here)_

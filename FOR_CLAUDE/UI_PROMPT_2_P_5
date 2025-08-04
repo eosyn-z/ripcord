@@ -1,0 +1,25 @@
+# Specialized Prompt for Claude: Creating the UI for the Server Node
+
+You are tasked with creating the server-side UI for the decentralized chat platform's node. This UI is specifically for configuring and managing the node instance that communicates over I2P. It should allow the server operator to interact with node settings, monitor peer connections, and view room information. Key features to include are:
+
+1. **Node Overview**:
+   - Display the node’s public key and I2P address.
+   - Show connection status and number of active peers.
+   - Provide options to refresh connection status.
+
+2. **Room Management**:
+   - Display a list of all active rooms (with number of participants).
+   - Allow the creation of new rooms and display their invite codes.
+   - Manage room settings (public/private) and list participants.
+   - Option to kick or block malicious nodes/participants.
+
+3. **Peer Management**:
+   - List all connected peers, their status, and key fingerprints.
+   - Allow manual verification or blocking of peers.
+   - Show connection logs and health monitoring.
+
+4. **Node Settings**:
+   - Configuration options for I2P setup (e.g., b32 address, connection settings).
+   - Option to reload the configuration or restart the node.
+
+Design the interface to be minimalistic and functional, ensuring server operators can manage the node with ease while retaining a focus on privacy and security.
