@@ -3,12 +3,12 @@ package main
 import (
 	"crypto/rand"
 	"errors"
-	"strings"
 	"sync"
 	"time"
 	"github.com/google/uuid"
 	"github.com/mr-tron/base58"
 	"ripcord/database"
+	"ripcord/types"
 )
 
 type Room struct {
@@ -19,7 +19,7 @@ type Room struct {
 	IsPrivate   bool               `json:"is_private"`
 	Members     map[string]*Member `json:"members"`
 	Moderators  map[string]bool    `json:"moderators"`
-	Messages    []*Message         `json:"messages,omitempty"` // For testing compatibility
+	Messages    []*types.Message   `json:"messages,omitempty"` // For testing compatibility
 	CreatedAt   time.Time          `json:"created_at"`
 	mu          sync.RWMutex       `json:"-"`
 }
@@ -64,7 +64,7 @@ func NewRoom(name, description string, isPrivate bool, creatorID string) *Room {
 		IsPrivate:   isPrivate,
 		Members:     make(map[string]*Member),
 		Moderators:  make(map[string]bool),
-		Messages:    make([]*Message, 0),
+		Messages:    make([]*types.Message, 0),
 		CreatedAt:   time.Now(),
 	}
 	
@@ -141,7 +141,7 @@ func (rm *RoomManager) GetRoom(roomID string) (*Room, error) {
 		IsPrivate:   dbRoom.IsPrivate,
 		Members:     make(map[string]*Member),
 		Moderators:  make(map[string]bool),
-		Messages:    make([]*Message, 0),
+		Messages:    make([]*types.Message, 0),
 		CreatedAt:   dbRoom.CreatedAt,
 	}
 	
@@ -357,12 +357,12 @@ func (rm *RoomManager) LeaveRoom(roomID, userID string) error {
 }
 
 // AddMessage adds a message to the room's in-memory message list (for testing compatibility)
-func (r *Room) AddMessage(msg *Message) error {
+func (r *Room) AddMessage(msg *types.Message) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	
 	if r.Messages == nil {
-		r.Messages = make([]*Message, 0)
+		r.Messages = make([]*types.Message, 0)
 	}
 	
 	r.Messages = append(r.Messages, msg)

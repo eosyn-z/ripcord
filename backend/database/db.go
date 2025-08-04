@@ -4,21 +4,30 @@ import (
 	"database/sql"
 	"fmt"
 	"time"
-	"crypto/ed25519"
-	"encoding/hex"
 	"errors"
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 	"ripcord/types"
 )
+
+// Room represents a chat room in the database layer
+type Room struct {
+	ID          string    `json:"id" db:"id"`
+	Name        string    `json:"name" db:"name"`
+	Description string    `json:"description" db:"description"`
+	InviteCode  string    `json:"invite_code" db:"invite_code"`
+	IsPrivate   bool      `json:"is_private" db:"is_private"`
+	CreatedAt   time.Time `json:"created_at" db:"created_at"`
+	Participants []string  `json:"participants,omitempty"`
+}
 
 type Database interface {
 	Connect() error
 	Disconnect() error
 	SaveMessage(msg *types.Message) error
 	GetMessages(roomID string, limit int) ([]*types.Message, error)
-	SaveRoom(room *types.Room) error
-	GetRoom(roomID string) (*types.Room, error)
-	GetRooms() ([]*types.Room, error)
+	SaveRoom(room *Room) error
+	GetRoom(roomID string) (*Room, error)
+	GetRooms() ([]*Room, error)
 	SaveUser(user *types.User) error
 	GetUser(userID string) (*types.User, error)
 	AddRoomParticipant(roomID, userID string) error
@@ -41,7 +50,7 @@ func NewSQLiteDatabase(dbPath string) *SQLiteDatabase {
 
 func (sdb *SQLiteDatabase) Connect() error {
 	var err error
-	sdb.db, err = sql.Open("sqlite3", sdb.dbPath)
+	sdb.db, err = sql.Open("sqlite", sdb.dbPath)
 	if err != nil {
 		return err
 	}
@@ -184,7 +193,7 @@ func (sdb *SQLiteDatabase) GetMessages(roomID string, limit int) ([]*types.Messa
 	return messages, nil
 }
 
-func (sdb *SQLiteDatabase) SaveRoom(room *types.Room) error {
+func (sdb *SQLiteDatabase) SaveRoom(room *Room) error {
 	query := `INSERT OR REPLACE INTO rooms (id, name, description, invite_code, is_private, created_at)
 			  VALUES (?, ?, ?, ?, ?, ?)`
 	
@@ -193,11 +202,11 @@ func (sdb *SQLiteDatabase) SaveRoom(room *types.Room) error {
 	return err
 }
 
-func (sdb *SQLiteDatabase) GetRoom(roomID string) (*types.Room, error) {
+func (sdb *SQLiteDatabase) GetRoom(roomID string) (*Room, error) {
 	query := `SELECT id, name, description, invite_code, is_private, created_at
 			  FROM rooms WHERE id = ?`
 	
-	room := &types.Room{}
+	room := &Room{}
 	err := sdb.db.QueryRow(query, roomID).Scan(&room.ID, &room.Name, 
 		&room.Description, &room.InviteCode, &room.IsPrivate, &room.CreatedAt)
 	
@@ -208,7 +217,7 @@ func (sdb *SQLiteDatabase) GetRoom(roomID string) (*types.Room, error) {
 	return room, err
 }
 
-func (sdb *SQLiteDatabase) GetRooms() ([]*types.Room, error) {
+func (sdb *SQLiteDatabase) GetRooms() ([]*Room, error) {
 	query := `SELECT id, name, description, invite_code, is_private, created_at
 			  FROM rooms ORDER BY created_at DESC`
 	
@@ -218,9 +227,9 @@ func (sdb *SQLiteDatabase) GetRooms() ([]*types.Room, error) {
 	}
 	defer rows.Close()
 	
-	var rooms []*types.Room
+	var rooms []*Room
 	for rows.Next() {
-		room := &types.Room{}
+		room := &Room{}
 		err := rows.Scan(&room.ID, &room.Name, &room.Description, 
 			&room.InviteCode, &room.IsPrivate, &room.CreatedAt)
 		if err != nil {

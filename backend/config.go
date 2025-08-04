@@ -32,6 +32,8 @@ type DatabaseConfig struct {
 // I2PConfig defines I2P network settings
 type I2PConfig struct {
 	Enabled     bool   `json:"enabled"`
+	Host        string `json:"host"`
+	Port        int    `json:"port"`
 	SamAddress  string `json:"sam_address"`
 	SamPort     int    `json:"sam_port"`
 	Destination string `json:"destination"`
@@ -62,6 +64,8 @@ func LoadConfig(filename string) (*Config, error) {
 		},
 		I2P: I2PConfig{
 			Enabled:    true,
+			Host:       "127.0.0.1",
+			Port:       7656,
 			SamAddress: "127.0.0.1",
 			SamPort:    7656,
 		},

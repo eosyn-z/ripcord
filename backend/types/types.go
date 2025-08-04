@@ -1,6 +1,11 @@
 package types
 
 import (
+	"crypto/ed25519"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"strings"
 	"time"
 )
 
@@ -112,4 +117,72 @@ type AdminSettings struct {
 		RequireSignatureVerification bool `json:"require_signature_verification"`
 		RateLimitPerMinute          int  `json:"rate_limit_per_minute"`
 	} `json:"security"`
+}
+
+// Message methods for cryptographic operations and parsing
+
+func (m *Message) Sign(privateKey ed25519.PrivateKey) error {
+	if privateKey == nil {
+		return errors.New("private key is nil")
+	}
+	
+	signableData, err := m.getSignableData()
+	if err != nil {
+		return err
+	}
+	
+	signature := ed25519.Sign(privateKey, signableData)
+	m.Signature = hex.EncodeToString(signature)
+	return nil
+}
+
+func (m *Message) getSignableData() ([]byte, error) {
+	temp := *m
+	temp.Signature = ""
+	return json.Marshal(temp)
+}
+
+func (m *Message) VerifySignature(publicKey ed25519.PublicKey) bool {
+	if m.Signature == "" || publicKey == nil {
+		return false
+	}
+	
+	signature, err := hex.DecodeString(m.Signature)
+	if err != nil {
+		return false
+	}
+	
+	signableData, err := m.getSignableData()
+	if err != nil {
+		return false
+	}
+	
+	return ed25519.Verify(publicKey, signableData, signature)
+}
+
+func (m *Message) IsSlashCommand() bool {
+	return strings.HasPrefix(m.Content, "/")
+}
+
+func (m *Message) ParseSlashCommand() (*SlashCommand, error) {
+	if !m.IsSlashCommand() {
+		return nil, errors.New("not a slash command")
+	}
+	
+	parts := strings.Fields(m.Content)
+	if len(parts) == 0 {
+		return nil, errors.New("empty command")
+	}
+	
+	command := strings.TrimPrefix(parts[0], "/")
+	args := parts[1:]
+	
+	return &SlashCommand{
+		Command: command,
+		Args:    args,
+	}, nil
+}
+
+func (m *Message) ToJSON() ([]byte, error) {
+	return json.Marshal(m)
 } 

@@ -183,20 +183,25 @@ func setupHTTPHandlers(server *Server) {
 	http.HandleFunc("/api/admin/logs/connections", corsHandler(server.handleConnectionLogs))
 	http.HandleFunc("/api/admin/settings", corsHandler(server.handleAdminSettings))
 	http.HandleFunc("/api/admin/restart", corsHandler(server.handleAdminRestart))
+	
+	// API Access Management endpoints
+	http.HandleFunc("/api/admin/api-access", corsHandler(server.handleAPIAccess))
+	http.HandleFunc("/api/admin/api-access/rules", corsHandler(server.handleAPIAccessRules))
+	http.HandleFunc("/api/admin/api-access/test", corsHandler(server.handleAPIAccessTest))
 }
 
 func serveStatic(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == "/" {
-		http.ServeFile(w, r, "./frontend/index.html")
+		http.ServeFile(w, r, "../frontend/index.html")
 		return
 	}
 	
 	if r.URL.Path == "/admin" || r.URL.Path == "/admin/" {
-		http.ServeFile(w, r, "./frontend/admin.html")
+		http.ServeFile(w, r, "../frontend/admin.html")
 		return
 	}
 	
-	staticDir := "./frontend/"
+	staticDir := "../frontend/"
 	http.StripPrefix("/", http.FileServer(http.Dir(staticDir))).ServeHTTP(w, r)
 }
 
@@ -719,6 +724,151 @@ func (s *Server) removeWSClient(client *WSClient) {
 		
 		log.Printf("WebSocket client disconnected: %s", client.conn.RemoteAddr())
 	}
+}
+
+// API Access Management handlers
+func (s *Server) handleAPIAccess(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		// Return current API access configuration
+		config := map[string]interface{}{
+			"enabled": true,
+			"require_auth": false,
+			"default_rate_limit": 100,
+			"global_permissions": map[string]bool{
+				"identity": true,
+				"admin_identity": true,
+				"stats": true,
+				"rooms_read": true,
+				"rooms_create": false,
+				"rooms_join": false,
+				"admin_rooms": true,
+				"messages_read": true,
+				"messages_send": false,
+				"peers": true,
+				"i2p_status": true,
+				"connection_logs": true,
+				"settings_read": true,
+				"settings_write": false,
+				"restart": false,
+			},
+		}
+		
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(config)
+		
+	case http.MethodPost:
+		// Update API access configuration
+		var config map[string]interface{}
+		if err := json.NewDecoder(r.Body).Decode(&config); err != nil {
+			http.Error(w, "Invalid JSON", http.StatusBadRequest)
+			return
+		}
+		
+		// TODO: Save configuration to database or config file
+		log.Printf("API access configuration updated: %+v", config)
+		
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"status": "success"})
+		
+	default:
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+func (s *Server) handleAPIAccessRules(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		// Return current API access rules
+		rules := []map[string]interface{}{
+			{
+				"id": "rule-1",
+				"node_identifier": "example-public-key-123",
+				"node_nickname": "Example Node",
+				"access_level": "standard",
+				"rate_limit": 100,
+				"enabled": true,
+				"allowed_endpoints": []string{"/api/identity", "/api/rooms", "/api/messages"},
+				"created_at": time.Now().Add(-24 * time.Hour),
+				"expires_at": nil,
+			},
+		}
+		
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(rules)
+		
+	case http.MethodPost:
+		// Add new API access rule
+		var rule map[string]interface{}
+		if err := json.NewDecoder(r.Body).Decode(&rule); err != nil {
+			http.Error(w, "Invalid JSON", http.StatusBadRequest)
+			return
+		}
+		
+		// Generate rule ID
+		rule["id"] = fmt.Sprintf("rule-%d", time.Now().Unix())
+		rule["created_at"] = time.Now()
+		
+		// TODO: Save rule to database
+		log.Printf("New API access rule added: %+v", rule)
+		
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(rule)
+		
+	case http.MethodDelete:
+		// Delete API access rule
+		ruleID := r.URL.Query().Get("id")
+		if ruleID == "" {
+			http.Error(w, "Rule ID required", http.StatusBadRequest)
+			return
+		}
+		
+		// TODO: Delete rule from database
+		log.Printf("API access rule deleted: %s", ruleID)
+		
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"status": "success"})
+		
+	default:
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+func (s *Server) handleAPIAccessTest(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	
+	var testRequest struct {
+		NodeIdentifier string `json:"node_identifier"`
+		Endpoint       string `json:"endpoint"`
+		Method         string `json:"method"`
+	}
+	
+	if err := json.NewDecoder(r.Body).Decode(&testRequest); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+	
+	// Simulate API access test
+	result := map[string]interface{}{
+		"allowed": true,
+		"access_level": "standard",
+		"rate_limit": 100,
+		"reason": "Node has standard access to this endpoint",
+		"matched_rule": "rule-1",
+	}
+	
+	// Simple simulation - block admin endpoints for non-admin access
+	if strings.Contains(testRequest.Endpoint, "/admin/") && testRequest.NodeIdentifier != s.cryptoManager.GetPublicKeyBase58() {
+		result["allowed"] = false
+		result["reason"] = "Admin access required for this endpoint"
+		result["access_level"] = "standard"
+	}
+	
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(result)
 }
 
 // Admin API handlers
